@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: Check + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check
+      - run: cargo test
+
+  smoke:
+    name: Generated projects compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build
+      - name: CSR minimal
+        run: |
+          ./target/debug/cargo-leptosx new /tmp/smoke-csr --yes --rendering csr --styling css
+          cargo check --target wasm32-unknown-unknown --manifest-path /tmp/smoke-csr/Cargo.toml
+      - name: CSR full
+        run: |
+          ./target/debug/cargo-leptosx new /tmp/smoke-csr-full --yes --rendering csr --styling css --template full
+          cargo check --target wasm32-unknown-unknown --manifest-path /tmp/smoke-csr-full/Cargo.toml
+      - name: SSR
+        run: |
+          ./target/debug/cargo-leptosx new /tmp/smoke-ssr --yes --rendering ssr-hydration --styling css
+          cargo check --no-default-features --features ssr --manifest-path /tmp/smoke-ssr/Cargo.toml
+          cargo check --target wasm32-unknown-unknown --no-default-features --features hydrate --manifest-path /tmp/smoke-ssr/Cargo.toml
+      - name: file-router (CSR)
+        run: |
+          mkdir -p /tmp/smoke-csr/src/pages/blog
+          printf 'use leptos::*;\n#[component]\npub fn Page() -> impl IntoView { view! { <h1>"x"</h1> } }\n' > /tmp/smoke-csr/src/pages/about.rs
+          printf 'use leptos::*;\nuse leptos_router::*;\n#[component]\npub fn Layout() -> impl IntoView { view! { <Outlet/> } }\n' > /tmp/smoke-csr/src/pages/blog/+layout.rs
+          printf 'use leptos::*;\n#[component]\npub fn Page() -> impl IntoView { view! { <h1>"x"</h1> } }\n' > /tmp/smoke-csr/src/pages/blog/[slug].rs
+          cd /tmp/smoke-csr
+          "${{ github.workspace }}/target/debug/cargo-leptosx" add file-router --force
+          cargo check --target wasm32-unknown-unknown
