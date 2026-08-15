@@ -6,6 +6,7 @@ description = "Scaffold Leptos frontend projects with file-based routing and fea
 license = "MIT OR Apache-2.0"
 keywords = ["leptos", "scaffold", "wasm", "router", "cli"]
 categories = ["command-line-utilities", "development-tools::build-utils"]
+repository = "https://github.com/Samujalphukan228/cargo-leptosx"
 
 [[bin]]
 name = "cargo-leptosx"
